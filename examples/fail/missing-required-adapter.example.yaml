@@ -1,0 +1,159 @@
+schema_version: "0.4.0"
+profile_kind: civilization-os-interoperability-profile
+profile_id: invalid-missing-required-adapter
+status: draft
+title: Invalid Missing Required Adapter
+description: >-
+  An invalid profile that uses an adapter-required compatibility link
+  without declaring the required adapter binding.
+identifier_namespace: org.kazene.civilization-os
+
+identifier_registry:
+  registry_id: kazene-core-identifiers
+  version: v0.2
+  registry_ref: registry/canonical-identifiers.yaml
+
+compatibility_registry:
+  registry_id: kazene-core-compatibility
+  version: v0.4
+  registry_ref: registry/protocol-compatibility.yaml
+
+adapter_registry:
+  registry_id: kazene-core-adapters
+  version: v0.4
+  registry_ref: registry/protocol-adapters.yaml
+
+adapter_bindings: []
+
+profile_sequence:
+  - stage: origin
+    position: 1
+    protocol:
+      protocol_id: origin-trace-receipt
+      version: v0.5
+      repository: SamuraiWriter7/origin-trace-receipt
+      schema_ref: schemas/origin-trace-receipt.schema.json
+      record_type: origin_trace_receipt
+    consumes: []
+    produces:
+      - canonical_id: origin_id
+        local_field: origin_receipt_id
+
+  - stage: trace
+    position: 2
+    protocol:
+      protocol_id: trace-relay-protocol
+      version: v0.9
+      repository: SamuraiWriter7/trace-relay-protocol
+      schema_ref: schemas/trace-relay-record.schema.json
+      record_type: trace_relay_record
+    consumes:
+      - canonical_id: origin_id
+        from_stage: origin
+        local_field: origin_ref
+        required: true
+    produces:
+      - canonical_id: trace_id
+        local_field: trace_record_id
+
+  - stage: authorization
+    position: 3
+    protocol:
+      protocol_id: agent-action-authorization-receipt-protocol
+      version: v0.5
+      repository: SamuraiWriter7/agent-action-authorization-receipt-protocol
+      schema_ref: schemas/action-authorization-receipt.schema.json
+      record_type: action_authorization_receipt
+    consumes:
+      - canonical_id: origin_id
+        from_stage: origin
+        local_field: evidence_refs.origin_id
+        required: true
+
+      - canonical_id: trace_id
+        from_stage: trace
+        local_field: evidence_refs.trace_id
+        required: true
+    produces:
+      - canonical_id: authorization_receipt_id
+        local_field: authorization_receipt_id
+
+  - stage: execution
+    position: 4
+    protocol:
+      protocol_id: agent-action-authorization-receipt-protocol
+      version: v0.5
+      repository: SamuraiWriter7/agent-action-authorization-receipt-protocol
+      schema_ref: schemas/authorization-execution-evidence.schema.json
+      record_type: authorization_execution_evidence
+    consumes:
+      - canonical_id: authorization_receipt_id
+        from_stage: authorization
+        local_field: authorization_receipt_ref
+        required: true
+    produces:
+      - canonical_id: execution_id
+        local_field: execution_id
+
+  - stage: audit
+    position: 5
+    protocol:
+      protocol_id: agentic-marketplace-audit
+      version: v0.5
+      repository: SamuraiWriter7/agentic-marketplace-audit
+      schema_ref: schemas/agentic-marketplace-audit-record.schema.json
+      record_type: agentic_marketplace_audit_record
+    consumes:
+      - canonical_id: authorization_receipt_id
+        from_stage: authorization
+        local_field: authorization_ref
+        required: true
+
+      - canonical_id: execution_id
+        from_stage: execution
+        local_field: execution_ref
+        required: true
+    produces:
+      - canonical_id: audit_id
+        local_field: audit_record_id
+
+  - stage: royalty
+    position: 6
+    protocol:
+      protocol_id: royalty-allocation-ledger-agent
+      version: v0.5
+      repository: SamuraiWriter7/royalty-allocation-ledger-agent
+      schema_ref: schemas/allocation-ledger-record.schema.json
+      record_type: allocation_ledger_record
+    consumes:
+      - canonical_id: origin_id
+        from_stage: origin
+        local_field: source_refs.origin_id
+        required: true
+
+      - canonical_id: audit_id
+        from_stage: audit
+        local_field: audit_refs.audit_id
+        required: true
+    produces:
+      - canonical_id: allocation_id
+        local_field: allocation_ledger_id
+
+conformance:
+  require_ordered_execution: true
+  require_reference_resolution: true
+  require_registry_resolution: true
+  require_registered_identifiers: true
+  require_unique_contract_producers: true
+  require_compatibility_resolution: true
+  require_exact_protocol_versions: true
+  reject_blocked_compatibility: true
+  require_adapter_resolution: true
+  reject_unbound_adapters: true
+  reject_lossy_adapters: true
+  reject_unknown_stages: true
+  allow_optional_profiles: false
+
+extensions:
+  expected_failure: missing-required-adapter
+  required_adapter_id: trace-relay-v0-9-to-authorization-v0-5
