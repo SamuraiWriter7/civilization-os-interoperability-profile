@@ -1,11 +1,12 @@
-schema_version: "0.4.0"
+schema_version: "0.5.0"
 profile_kind: civilization-os-interoperability-profile
 profile_id: invalid-missing-required-adapter
 status: draft
 title: Invalid Missing Required Adapter
 description: >-
-  An invalid profile that uses an adapter-required compatibility link
-  without declaring the required adapter binding.
+  An invalid profile that connects legacy Trace Relay v0.9 to
+  Authorization Receipt v0.5 through an adapter-required compatibility
+  link without declaring the required adapter binding.
 identifier_namespace: org.kazene.civilization-os
 
 identifier_registry:
@@ -25,6 +26,13 @@ adapter_registry:
 
 adapter_bindings: []
 
+resolution_policy:
+  require_resolution_receipt: true
+  require_digest_lock: true
+  require_exact_stage_snapshot: true
+  require_conformance_handoff: true
+  handoff_target: kazene-protocol-conformance-suite
+
 profile_sequence:
   - stage: origin
     position: 1
@@ -38,6 +46,9 @@ profile_sequence:
     produces:
       - canonical_id: origin_id
         local_field: origin_receipt_id
+    notes: >-
+      Establishes the source, creator, provenance root, and stable
+      origin identifier for the lifecycle.
 
   - stage: trace
     position: 2
@@ -55,6 +66,9 @@ profile_sequence:
     produces:
       - canonical_id: trace_id
         local_field: trace_record_id
+    notes: >-
+      Produces the legacy Trace Relay v0.9 trace representation, which
+      requires an adapter before Authorization Receipt v0.5 can consume it.
 
   - stage: authorization
     position: 3
@@ -77,6 +91,9 @@ profile_sequence:
     produces:
       - canonical_id: authorization_receipt_id
         local_field: authorization_receipt_id
+    notes: >-
+      Invalid connection. Authorization consumes the legacy trace_id
+      without the adapter binding required by the compatibility registry.
 
   - stage: execution
     position: 4
@@ -94,6 +111,8 @@ profile_sequence:
     produces:
       - canonical_id: execution_id
         local_field: execution_id
+    notes: >-
+      Binds execution evidence to the resolved authorization receipt.
 
   - stage: audit
     position: 5
@@ -116,6 +135,9 @@ profile_sequence:
     produces:
       - canonical_id: audit_id
         local_field: audit_record_id
+    notes: >-
+      Verifies authorization and execution evidence before value
+      allocation may occur.
 
   - stage: royalty
     position: 6
@@ -138,6 +160,9 @@ profile_sequence:
     produces:
       - canonical_id: allocation_id
         local_field: allocation_ledger_id
+    notes: >-
+      Converts audited origin and contribution evidence into an
+      explainable royalty allocation record.
 
 conformance:
   require_ordered_execution: true
@@ -151,9 +176,16 @@ conformance:
   require_adapter_resolution: true
   reject_unbound_adapters: true
   reject_lossy_adapters: true
+  require_resolution_receipt: true
+  require_digest_lock: true
+  require_conformance_handoff: true
   reject_unknown_stages: true
   allow_optional_profiles: false
 
 extensions:
   expected_failure: missing-required-adapter
+  compatibility_link_id: trace-v0-9-to-authorization
   required_adapter_id: trace-relay-v0-9-to-authorization-v0-5
+  invalid_source_stage: trace
+  invalid_target_stage: authorization
+  invalid_identifier: trace_id
