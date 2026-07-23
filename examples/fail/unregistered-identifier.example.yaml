@@ -1,4 +1,4 @@
-schema_version: "0.2.0"
+schema_version: "0.3.0"
 profile_kind: civilization-os-interoperability-profile
 profile_id: invalid-unregistered-identifier
 status: draft
@@ -12,6 +12,11 @@ identifier_registry:
   registry_id: kazene-core-identifiers
   version: v0.2
   registry_ref: registry/canonical-identifiers.yaml
+
+compatibility_registry:
+  registry_id: kazene-core-compatibility
+  version: v0.3
+  registry_ref: registry/protocol-compatibility.yaml
 
 profile_sequence:
   - stage: origin
@@ -141,7 +146,7 @@ profile_sequence:
     produces:
       - canonical_id: allocation_id
         local_field: allocation_ledger_id
-    notes: Converts verified evidence into a royalty allocation record.
+    notes: Converts audited contribution evidence into an allocation record.
 
 conformance:
   require_ordered_execution: true
@@ -149,9 +154,13 @@ conformance:
   require_registry_resolution: true
   require_registered_identifiers: true
   require_unique_contract_producers: true
+  require_compatibility_resolution: true
+  require_exact_protocol_versions: true
+  reject_blocked_compatibility: true
   reject_unknown_stages: true
   allow_optional_profiles: false
 
 extensions:
   expected_failure: unregistered-canonical-identifier
+  invalid_producer_stage: origin
   invalid_identifier: policy_id
