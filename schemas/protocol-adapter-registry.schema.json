@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://civilization-os.example/schemas/protocol-adapter-registry.schema.json",
+  "title": "Civilization OS Protocol Adapter Registry",
+  "description": "Defines explicit adapters used to bridge otherwise incompatible Civilization OS protocol versions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "registry_kind",
+    "registry_id",
+    "version",
+    "namespace",
+    "status",
+    "adapters"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.4.0"
+    },
+    "registry_kind": {
+      "const": "civilization-os-protocol-adapter-registry"
+    },
+    "registry_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+    },
+    "namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z0-9-]+)+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "deprecated"
+      ]
+    },
+    "adapters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/adapterContract"
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "adapterContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter_id",
+        "adapter_version",
+        "status",
+        "source",
+        "target",
+        "canonical_id",
+        "transforms",
+        "lossiness",
+        "integrity_behavior",
+        "description"
+      ],
+      "properties": {
+        "adapter_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+          "maxLength": 160
+        },
+        "adapter_version": {
+          "type": "string",
+          "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "deprecated"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/protocolEndpoint"
+        },
+        "target": {
+          "$ref": "#/$defs/protocolEndpoint"
+        },
+        "canonical_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*_id$"
+        },
+        "transforms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/fieldTransform"
+          }
+        },
+        "lossiness": {
+          "type": "string",
+          "enum": [
+            "lossless",
+            "conditionally-lossy",
+            "lossy"
+          ]
+        },
+        "integrity_behavior": {
+          "type": "string",
+          "enum": [
+            "preserve",
+            "recompute-digest",
+            "re-sign",
+            "none"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    },
+    "protocolEndpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "protocol_id",
+        "version",
+        "record_type"
+      ],
+      "properties": {
+        "stage": {
+          "$ref": "#/$defs/stageName"
+        },
+        "protocol_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+        },
+        "record_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+        }
+      }
+    },
+    "fieldTransform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "from_field",
+        "to_field",
+        "required"
+      ],
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "copy",
+            "rename",
+            "wrap",
+            "unwrap",
+            "serialize",
+            "deserialize"
+          ]
+        },
+        "from_field": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$"
+        },
+        "to_field": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "stageName": {
+      "type": "string",
+      "enum": [
+        "origin",
+        "trace",
+        "authorization",
+        "execution",
+        "audit",
+        "royalty"
+      ]
+    }
+  }
+}
