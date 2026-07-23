@@ -1,0 +1,466 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://civilization-os.example/schemas/interoperability-resolution-receipt.schema.json",
+  "title": "Civilization OS Interoperability Resolution Receipt",
+  "description": "Records the exact resolved protocol composition, registry digests, compatibility links, adapter bindings, and conformance handoff state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "receipt_kind",
+    "receipt_id",
+    "profile",
+    "registries",
+    "resolved_stages",
+    "resolved_links",
+    "conformance",
+    "handoff",
+    "issued_at",
+    "issuer"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.5.0"
+    },
+    "receipt_kind": {
+      "const": "civilization-os-interoperability-resolution-receipt"
+    },
+    "receipt_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "profile": {
+      "$ref": "#/$defs/profileLock"
+    },
+    "registries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identifier",
+        "compatibility",
+        "adapter"
+      ],
+      "properties": {
+        "identifier": {
+          "$ref": "#/$defs/registryLock"
+        },
+        "compatibility": {
+          "$ref": "#/$defs/registryLock"
+        },
+        "adapter": {
+          "$ref": "#/$defs/registryLock"
+        }
+      }
+    },
+    "resolved_stages": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/resolvedStage"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "origin"
+                },
+                "position": {
+                  "const": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/resolvedStage"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "trace"
+                },
+                "position": {
+                  "const": 2
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/resolvedStage"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "authorization"
+                },
+                "position": {
+                  "const": 3
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/resolvedStage"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "execution"
+                },
+                "position": {
+                  "const": 4
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/resolvedStage"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "audit"
+                },
+                "position": {
+                  "const": 5
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/resolvedStage"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "royalty"
+                },
+                "position": {
+                  "const": 6
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "items": false
+    },
+    "resolved_links": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "$ref": "#/$defs/resolvedLink"
+      }
+    },
+    "conformance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "profile_schema_valid",
+        "profile_semantic_valid",
+        "identifier_registry_valid",
+        "compatibility_registry_valid",
+        "adapter_registry_valid",
+        "reference_resolution_valid",
+        "digest_lock_created",
+        "errors"
+      ],
+      "properties": {
+        "status": {
+          "const": "resolved"
+        },
+        "profile_schema_valid": {
+          "const": true
+        },
+        "profile_semantic_valid": {
+          "const": true
+        },
+        "identifier_registry_valid": {
+          "const": true
+        },
+        "compatibility_registry_valid": {
+          "const": true
+        },
+        "adapter_registry_valid": {
+          "const": true
+        },
+        "reference_resolution_valid": {
+          "const": true
+        },
+        "digest_lock_created": {
+          "const": true
+        },
+        "errors": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "target_suite",
+        "required_checks"
+      ],
+      "properties": {
+        "status": {
+          "const": "ready"
+        },
+        "target_suite": {
+          "const": "kazene-protocol-conformance-suite"
+        },
+        "required_checks": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "schema-validation",
+              "semantic-validation",
+              "registry-resolution",
+              "compatibility-resolution",
+              "adapter-resolution",
+              "digest-verification",
+              "cross-protocol-fixture-validation",
+              "failure-propagation-validation"
+            ]
+          }
+        }
+      }
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "issuer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resolver_id",
+        "implementation"
+      ],
+      "properties": {
+        "resolver_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "implementation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "profileLock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "schema_version",
+        "profile_ref",
+        "digest"
+      ],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "schema_version": {
+          "const": "0.5.0"
+        },
+        "profile_ref": {
+          "$ref": "#/$defs/fileReference"
+        },
+        "digest": {
+          "$ref": "#/$defs/sha256Digest"
+        }
+      }
+    },
+    "registryLock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registry_id",
+        "version",
+        "registry_ref",
+        "digest"
+      ],
+      "properties": {
+        "registry_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+        },
+        "registry_ref": {
+          "$ref": "#/$defs/fileReference"
+        },
+        "digest": {
+          "$ref": "#/$defs/sha256Digest"
+        }
+      }
+    },
+    "resolvedStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "position",
+        "protocol_id",
+        "version",
+        "repository",
+        "schema_ref",
+        "record_type"
+      ],
+      "properties": {
+        "stage": {
+          "$ref": "#/$defs/stageName"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "protocol_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "schema_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "record_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+        }
+      }
+    },
+    "resolvedLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "link_id",
+        "source_stage",
+        "target_stage",
+        "canonical_id",
+        "disposition"
+      ],
+      "properties": {
+        "link_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "source_stage": {
+          "$ref": "#/$defs/stageName"
+        },
+        "target_stage": {
+          "$ref": "#/$defs/stageName"
+        },
+        "canonical_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*_id$"
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "compatible",
+            "adapter-required"
+          ]
+        },
+        "adapter_binding_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "adapter_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "adapter_version": {
+          "type": "string",
+          "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "disposition": {
+                "const": "adapter-required"
+              }
+            },
+            "required": [
+              "disposition"
+            ]
+          },
+          "then": {
+            "required": [
+              "adapter_binding_id",
+              "adapter_id",
+              "adapter_version"
+            ]
+          }
+        }
+      ]
+    },
+    "stageName": {
+      "type": "string",
+      "enum": [
+        "origin",
+        "trace",
+        "authorization",
+        "execution",
+        "audit",
+        "royalty"
+      ]
+    },
+    "fileReference": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+$",
+      "maxLength": 500
+    },
+    "sha256Digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    }
+  }
+}
