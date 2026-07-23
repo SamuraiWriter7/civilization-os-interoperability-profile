@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://civilization-os.example/schemas/protocol-compatibility-registry.schema.json",
+  "title": "Civilization OS Protocol Compatibility Registry",
+  "description": "Defines allowed, blocked, deprecated, and adapter-dependent connections between Civilization OS protocol versions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "registry_kind",
+    "registry_id",
+    "version",
+    "namespace",
+    "status",
+    "links"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.3.0"
+    },
+    "registry_kind": {
+      "const": "civilization-os-protocol-compatibility-registry"
+    },
+    "registry_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+    },
+    "namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z0-9-]+)+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "deprecated"
+      ]
+    },
+    "links": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/compatibilityLink"
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "compatibilityLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "link_id",
+        "source",
+        "target",
+        "canonical_id",
+        "disposition",
+        "description"
+      ],
+      "properties": {
+        "link_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "source": {
+          "$ref": "#/$defs/protocolEndpoint"
+        },
+        "target": {
+          "$ref": "#/$defs/protocolEndpoint"
+        },
+        "canonical_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*_id$"
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "compatible",
+            "adapter-required",
+            "blocked",
+            "deprecated"
+          ]
+        },
+        "adapter_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "disposition": {
+                "const": "adapter-required"
+              }
+            },
+            "required": [
+              "disposition"
+            ]
+          },
+          "then": {
+            "required": [
+              "adapter_ref"
+            ]
+          }
+        }
+      ]
+    },
+    "protocolEndpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "protocol_id",
+        "versions",
+        "record_type"
+      ],
+      "properties": {
+        "stage": {
+          "$ref": "#/$defs/stageName"
+        },
+        "protocol_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "versions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+          }
+        },
+        "record_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+        }
+      }
+    },
+    "stageName": {
+      "type": "string",
+      "enum": [
+        "origin",
+        "trace",
+        "authorization",
+        "execution",
+        "audit",
+        "royalty"
+      ]
+    }
+  }
+}
