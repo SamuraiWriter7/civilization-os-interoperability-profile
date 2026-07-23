@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://civilization-os.example/schemas/civilization-os-interoperability-profile.schema.json",
   "title": "Civilization OS Interoperability Profile",
-  "description": "Defines ordered protocol bindings through canonical identifier and protocol compatibility registries.",
+  "description": "Defines ordered protocol bindings through canonical identifier, compatibility, and adapter registries, together with resolution receipt and conformance handoff policies.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,12 +15,15 @@
     "identifier_namespace",
     "identifier_registry",
     "compatibility_registry",
+    "adapter_registry",
+    "adapter_bindings",
+    "resolution_policy",
     "profile_sequence",
     "conformance"
   ],
   "properties": {
     "schema_version": {
-      "const": "0.3.0"
+      "const": "0.5.0"
     },
     "profile_kind": {
       "const": "civilization-os-interoperability-profile"
@@ -59,6 +62,19 @@
     "compatibility_registry": {
       "$ref": "#/$defs/registryReference"
     },
+    "adapter_registry": {
+      "$ref": "#/$defs/registryReference"
+    },
+    "adapter_bindings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/adapterBinding"
+      }
+    },
+    "resolution_policy": {
+      "$ref": "#/$defs/resolutionPolicy"
+    },
     "profile_sequence": {
       "type": "array",
       "minItems": 6,
@@ -77,7 +93,11 @@
                 "position": {
                   "const": 1
                 }
-              }
+              },
+              "required": [
+                "stage",
+                "position"
+              ]
             }
           ]
         },
@@ -94,7 +114,11 @@
                 "position": {
                   "const": 2
                 }
-              }
+              },
+              "required": [
+                "stage",
+                "position"
+              ]
             }
           ]
         },
@@ -111,7 +135,11 @@
                 "position": {
                   "const": 3
                 }
-              }
+              },
+              "required": [
+                "stage",
+                "position"
+              ]
             }
           ]
         },
@@ -128,7 +156,11 @@
                 "position": {
                   "const": 4
                 }
-              }
+              },
+              "required": [
+                "stage",
+                "position"
+              ]
             }
           ]
         },
@@ -145,7 +177,11 @@
                 "position": {
                   "const": 5
                 }
-              }
+              },
+              "required": [
+                "stage",
+                "position"
+              ]
             }
           ]
         },
@@ -162,7 +198,11 @@
                 "position": {
                   "const": 6
                 }
-              }
+              },
+              "required": [
+                "stage",
+                "position"
+              ]
             }
           ]
         }
@@ -170,52 +210,7 @@
       "items": false
     },
     "conformance": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "require_ordered_execution",
-        "require_reference_resolution",
-        "require_registry_resolution",
-        "require_registered_identifiers",
-        "require_unique_contract_producers",
-        "require_compatibility_resolution",
-        "require_exact_protocol_versions",
-        "reject_blocked_compatibility",
-        "reject_unknown_stages",
-        "allow_optional_profiles"
-      ],
-      "properties": {
-        "require_ordered_execution": {
-          "const": true
-        },
-        "require_reference_resolution": {
-          "const": true
-        },
-        "require_registry_resolution": {
-          "const": true
-        },
-        "require_registered_identifiers": {
-          "const": true
-        },
-        "require_unique_contract_producers": {
-          "const": true
-        },
-        "require_compatibility_resolution": {
-          "const": true
-        },
-        "require_exact_protocol_versions": {
-          "const": true
-        },
-        "reject_blocked_compatibility": {
-          "const": true
-        },
-        "reject_unknown_stages": {
-          "const": true
-        },
-        "allow_optional_profiles": {
-          "type": "boolean"
-        }
-      }
+      "$ref": "#/$defs/conformancePolicy"
     },
     "extensions": {
       "type": "object",
@@ -234,16 +229,15 @@
       "properties": {
         "registry_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+          "minLength": 3,
+          "maxLength": 128
         },
         "version": {
-          "type": "string",
-          "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+          "$ref": "#/$defs/versionString"
         },
         "registry_ref": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 500
+          "$ref": "#/$defs/fileReference"
         }
       }
     },
@@ -271,6 +265,7 @@
         },
         "consumes": {
           "type": "array",
+          "uniqueItems": true,
           "items": {
             "$ref": "#/$defs/consumedIdentifier"
           }
@@ -278,12 +273,14 @@
         "produces": {
           "type": "array",
           "minItems": 1,
+          "uniqueItems": true,
           "items": {
             "$ref": "#/$defs/producedIdentifier"
           }
         },
         "notes": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 1000
         }
       }
@@ -301,24 +298,26 @@
       "properties": {
         "protocol_id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+          "minLength": 3,
+          "maxLength": 160
         },
         "version": {
-          "type": "string",
-          "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+          "$ref": "#/$defs/versionString"
         },
         "repository": {
           "type": "string",
-          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+          "maxLength": 300
         },
         "schema_ref": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 500
+          "$ref": "#/$defs/fileReference"
         },
         "record_type": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+          "minLength": 3,
+          "maxLength": 160
         }
       }
     },
@@ -362,6 +361,144 @@
         }
       }
     },
+    "adapterBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding_id",
+        "adapter_id",
+        "adapter_version",
+        "source_stage",
+        "target_stage",
+        "canonical_id"
+      ],
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "adapter_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "adapter_version": {
+          "$ref": "#/$defs/versionString"
+        },
+        "source_stage": {
+          "$ref": "#/$defs/stageName"
+        },
+        "target_stage": {
+          "$ref": "#/$defs/stageName"
+        },
+        "canonical_id": {
+          "$ref": "#/$defs/canonicalIdentifier"
+        }
+      }
+    },
+    "resolutionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "require_resolution_receipt",
+        "require_digest_lock",
+        "require_exact_stage_snapshot",
+        "require_conformance_handoff",
+        "handoff_target"
+      ],
+      "properties": {
+        "require_resolution_receipt": {
+          "const": true
+        },
+        "require_digest_lock": {
+          "const": true
+        },
+        "require_exact_stage_snapshot": {
+          "const": true
+        },
+        "require_conformance_handoff": {
+          "const": true
+        },
+        "handoff_target": {
+          "const": "kazene-protocol-conformance-suite"
+        }
+      }
+    },
+    "conformancePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "require_ordered_execution",
+        "require_reference_resolution",
+        "require_registry_resolution",
+        "require_registered_identifiers",
+        "require_unique_contract_producers",
+        "require_compatibility_resolution",
+        "require_exact_protocol_versions",
+        "reject_blocked_compatibility",
+        "require_adapter_resolution",
+        "reject_unbound_adapters",
+        "reject_lossy_adapters",
+        "require_resolution_receipt",
+        "require_digest_lock",
+        "require_conformance_handoff",
+        "reject_unknown_stages",
+        "allow_optional_profiles"
+      ],
+      "properties": {
+        "require_ordered_execution": {
+          "const": true
+        },
+        "require_reference_resolution": {
+          "const": true
+        },
+        "require_registry_resolution": {
+          "const": true
+        },
+        "require_registered_identifiers": {
+          "const": true
+        },
+        "require_unique_contract_producers": {
+          "const": true
+        },
+        "require_compatibility_resolution": {
+          "const": true
+        },
+        "require_exact_protocol_versions": {
+          "const": true
+        },
+        "reject_blocked_compatibility": {
+          "const": true
+        },
+        "require_adapter_resolution": {
+          "const": true
+        },
+        "reject_unbound_adapters": {
+          "const": true
+        },
+        "reject_lossy_adapters": {
+          "type": "boolean"
+        },
+        "require_resolution_receipt": {
+          "const": true
+        },
+        "require_digest_lock": {
+          "const": true
+        },
+        "require_conformance_handoff": {
+          "const": true
+        },
+        "reject_unknown_stages": {
+          "const": true
+        },
+        "allow_optional_profiles": {
+          "type": "boolean"
+        }
+      }
+    },
     "stageName": {
       "type": "string",
       "enum": [
@@ -375,11 +512,25 @@
     },
     "canonicalIdentifier": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9_]*_id$"
+      "pattern": "^[a-z][a-z0-9_]*_id$",
+      "minLength": 3,
+      "maxLength": 160
     },
     "localField": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$"
+      "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "versionString": {
+      "type": "string",
+      "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+    },
+    "fileReference": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+$",
+      "minLength": 3,
+      "maxLength": 500
     }
   }
 }
