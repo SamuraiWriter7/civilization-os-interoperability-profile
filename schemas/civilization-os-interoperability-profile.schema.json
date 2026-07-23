@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://civilization-os.example/schemas/civilization-os-interoperability-profile.schema.json",
+  "title": "Civilization OS Interoperability Profile",
+  "description": "Defines the ordered binding of independent Civilization OS protocols through canonical identifiers and lifecycle references.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_kind",
+    "profile_id",
+    "status",
+    "title",
+    "description",
+    "identifier_namespace",
+    "profile_sequence",
+    "conformance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "profile_kind": {
+      "const": "civilization-os-interoperability-profile"
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "deprecated"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "identifier_namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z0-9-]+)+$"
+    },
+    "profile_sequence": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profileBinding"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "origin"
+                },
+                "position": {
+                  "const": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profileBinding"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "trace"
+                },
+                "position": {
+                  "const": 2
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profileBinding"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "authorization"
+                },
+                "position": {
+                  "const": 3
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profileBinding"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "execution"
+                },
+                "position": {
+                  "const": 4
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profileBinding"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "audit"
+                },
+                "position": {
+                  "const": 5
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profileBinding"
+            },
+            {
+              "properties": {
+                "stage": {
+                  "const": "royalty"
+                },
+                "position": {
+                  "const": 6
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "items": false
+    },
+    "conformance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "require_ordered_execution",
+        "require_reference_resolution",
+        "reject_unknown_stages",
+        "allow_optional_profiles"
+      ],
+      "properties": {
+        "require_ordered_execution": {
+          "const": true
+        },
+        "require_reference_resolution": {
+          "const": true
+        },
+        "reject_unknown_stages": {
+          "const": true
+        },
+        "allow_optional_profiles": {
+          "type": "boolean"
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "profileBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "position",
+        "protocol",
+        "consumes",
+        "produces"
+      ],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": [
+            "origin",
+            "trace",
+            "authorization",
+            "execution",
+            "audit",
+            "royalty"
+          ]
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "protocol": {
+          "$ref": "#/$defs/protocolReference"
+        },
+        "consumes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/consumedIdentifier"
+          }
+        },
+        "produces": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/producedIdentifier"
+          }
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      }
+    },
+    "protocolReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_id",
+        "version",
+        "repository",
+        "schema_ref",
+        "record_type"
+      ],
+      "properties": {
+        "protocol_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "schema_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "record_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+        }
+      }
+    },
+    "consumedIdentifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_id",
+        "from_stage",
+        "local_field",
+        "required"
+      ],
+      "properties": {
+        "canonical_id": {
+          "$ref": "#/$defs/canonicalIdentifier"
+        },
+        "from_stage": {
+          "type": "string",
+          "enum": [
+            "origin",
+            "trace",
+            "authorization",
+            "execution",
+            "audit",
+            "royalty"
+          ]
+        },
+        "local_field": {
+          "$ref": "#/$defs/localField"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "producedIdentifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_id",
+        "local_field"
+      ],
+      "properties": {
+        "canonical_id": {
+          "$ref": "#/$defs/canonicalIdentifier"
+        },
+        "local_field": {
+          "$ref": "#/$defs/localField"
+        }
+      }
+    },
+    "canonicalIdentifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*_id$"
+    },
+    "localField": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$"
+    }
+  }
+}
