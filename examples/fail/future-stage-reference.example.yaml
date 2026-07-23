@@ -1,12 +1,17 @@
-schema_version: "0.1.0"
+schema_version: "0.2.0"
 profile_kind: civilization-os-interoperability-profile
-profile_id: invalid-future-reference
+profile_id: invalid-future-stage-reference
 status: draft
 title: Invalid Future Stage Reference
 description: >-
-  An invalid profile in which Authorization consumes an identifier
-  from the later Audit stage.
+  An invalid profile in which the Authorization stage consumes audit_id
+  from the later Audit stage before that identifier can exist.
 identifier_namespace: org.kazene.civilization-os
+
+identifier_registry:
+  registry_id: kazene-core-identifiers
+  version: v0.2
+  registry_ref: registry/canonical-identifiers.yaml
 
 profile_sequence:
   - stage: origin
@@ -21,6 +26,7 @@ profile_sequence:
     produces:
       - canonical_id: origin_id
         local_field: origin_receipt_id
+    notes: Establishes the source and provenance root.
 
   - stage: trace
     position: 2
@@ -38,6 +44,7 @@ profile_sequence:
     produces:
       - canonical_id: trace_id
         local_field: trace_record_id
+    notes: Carries origin context into the observable trace chain.
 
   - stage: authorization
     position: 3
@@ -52,6 +59,7 @@ profile_sequence:
         from_stage: origin
         local_field: evidence_refs.origin_id
         required: true
+
       - canonical_id: audit_id
         from_stage: audit
         local_field: evidence_refs.audit_id
@@ -59,6 +67,9 @@ profile_sequence:
     produces:
       - canonical_id: authorization_receipt_id
         local_field: authorization_receipt_id
+    notes: >-
+      Invalid binding. Authorization attempts to consume audit_id from
+      the later Audit stage instead of requiring trace_id from Trace.
 
   - stage: execution
     position: 4
@@ -73,9 +84,15 @@ profile_sequence:
         from_stage: authorization
         local_field: authorization_receipt_ref
         required: true
+
+      - canonical_id: trace_id
+        from_stage: trace
+        local_field: trace_ref
+        required: true
     produces:
       - canonical_id: execution_id
         local_field: execution_id
+    notes: Binds execution evidence to the authorization decision.
 
   - stage: audit
     position: 5
@@ -86,6 +103,11 @@ profile_sequence:
       schema_ref: schemas/agentic-marketplace-audit-record.schema.json
       record_type: agentic_marketplace_audit_record
     consumes:
+      - canonical_id: authorization_receipt_id
+        from_stage: authorization
+        local_field: authorization_ref
+        required: true
+
       - canonical_id: execution_id
         from_stage: execution
         local_field: execution_ref
@@ -93,6 +115,7 @@ profile_sequence:
     produces:
       - canonical_id: audit_id
         local_field: audit_record_id
+    notes: Produces audit_id only after Authorization and Execution.
 
   - stage: royalty
     position: 6
@@ -103,6 +126,11 @@ profile_sequence:
       schema_ref: schemas/allocation-ledger-record.schema.json
       record_type: allocation_ledger_record
     consumes:
+      - canonical_id: origin_id
+        from_stage: origin
+        local_field: source_refs.origin_id
+        required: true
+
       - canonical_id: audit_id
         from_stage: audit
         local_field: audit_refs.audit_id
@@ -110,9 +138,19 @@ profile_sequence:
     produces:
       - canonical_id: allocation_id
         local_field: allocation_ledger_id
+    notes: Converts verified evidence into a royalty allocation record.
 
 conformance:
   require_ordered_execution: true
   require_reference_resolution: true
+  require_registry_resolution: true
+  require_registered_identifiers: true
+  require_unique_contract_producers: true
   reject_unknown_stages: true
   allow_optional_profiles: false
+
+extensions:
+  expected_failure: future-stage-reference
+  invalid_consumer_stage: authorization
+  invalid_source_stage: audit
+  invalid_identifier: audit_id
