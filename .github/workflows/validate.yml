@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -29,6 +29,26 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Validate examples
+      - name: Validate registries and profiles
         run: |
           python scripts/validate_examples.py
+
+      - name: Generate resolution receipt
+        run: |
+          python scripts/generate_resolution_receipt.py \
+            examples/pass/civilization-os-interoperability-profile.example.yaml \
+            build/resolution/kazene-core-lifecycle.resolution.yaml \
+            --skip-repository-validation
+
+      - name: Validate resolution receipt
+        run: |
+          python scripts/validate_resolution_receipt.py \
+            build/resolution/kazene-core-lifecycle.resolution.yaml
+
+      - name: Upload resolution receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: civilization-os-resolution-receipt
+          path: build/resolution/kazene-core-lifecycle.resolution.yaml
+          if-no-files-found: error
+          retention-days: 30
