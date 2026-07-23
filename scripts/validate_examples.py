@@ -17,16 +17,28 @@ PROFILE_SCHEMA_PATH = (
     / "civilization-os-interoperability-profile.schema.json"
 )
 
-REGISTRY_SCHEMA_PATH = (
+IDENTIFIER_SCHEMA_PATH = (
     ROOT
     / "schemas"
     / "canonical-identifier-registry.schema.json"
 )
 
-REGISTRY_PATH = (
+COMPATIBILITY_SCHEMA_PATH = (
+    ROOT
+    / "schemas"
+    / "protocol-compatibility-registry.schema.json"
+)
+
+IDENTIFIER_REGISTRY_PATH = (
     ROOT
     / "registry"
     / "canonical-identifiers.yaml"
+)
+
+COMPATIBILITY_REGISTRY_PATH = (
+    ROOT
+    / "registry"
+    / "protocol-compatibility.yaml"
 )
 
 PASS_DIR = ROOT / "examples" / "pass"
@@ -41,6 +53,11 @@ EXPECTED_STAGES = (
     "audit",
     "royalty",
 )
+
+STAGE_POSITIONS = {
+    stage: index
+    for index, stage in enumerate(EXPECTED_STAGES)
+}
 
 
 REQUIRED_CONTRACTS = {
@@ -156,7 +173,38 @@ def schema_errors(
     ]
 
 
-def registry_semantic_errors(
+def collect_yaml_files(directory: Path) -> list[Path]:
+    return sorted(
+        [
+            *directory.glob("*.yaml"),
+            *directory.glob("*.yml"),
+        ]
+    )
+
+
+def build_identifier_contract_map(
+    registry: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    identifiers = registry.get(
+        "identifiers",
+        [],
+    )
+
+    if not isinstance(identifiers, list):
+        return {}
+
+    return {
+        contract["canonical_id"]: contract
+        for contract in identifiers
+        if isinstance(contract, dict)
+        and isinstance(
+            contract.get("canonical_id"),
+            str,
+        )
+    }
+
+
+def identifier_registry_semantic_errors(
     registry: dict[str, Any],
 ) -> list[str]:
     errors: list[str] = []
@@ -173,7 +221,7 @@ def registry_semantic_errors(
 
     seen_ids: set[str] = set()
 
-    for index, contract in enumerate(identifiers):
+    for contract in identifiers:
         if not isinstance(contract, dict):
             continue
 
@@ -192,21 +240,15 @@ def registry_semantic_errors(
 
         seen_ids.add(canonical_id)
 
-    contracts_by_id = {
-        contract.get("canonical_id"): contract
-        for contract in identifiers
-        if isinstance(contract, dict)
-        and isinstance(
-            contract.get("canonical_id"),
-            str,
-        )
-    }
+    contract_map = build_identifier_contract_map(
+        registry
+    )
 
     for canonical_id, (
         expected_stage,
         expected_semantic_type,
     ) in REQUIRED_CONTRACTS.items():
-        contract = contracts_by_id.get(
+        contract = contract_map.get(
             canonical_id
         )
 
@@ -252,33 +294,352 @@ def registry_semantic_errors(
     return errors
 
 
-def build_contract_map(
+def compatibility_registry_semantic_errors(
     registry: dict[str, Any],
-) -> dict[str, dict[str, Any]]:
-    identifiers = registry.get(
-        "identifiers",
+    identifier_registry: dict[str, Any],
+) -> list[str]:
+    errors: list[str] = []
+
+    links = registry.get(
+        "links",
         [],
     )
 
-    if not isinstance(identifiers, list):
-        return {}
+    if not isinstance(links, list):
+        return [
+            "links must be an array."
+        ]
 
-    return {
-        contract["canonical_id"]: contract
-        for contract in identifiers
-        if isinstance(contract, dict)
-        and isinstance(
-            contract.get("canonical_id"),
-            str,
+    identifier_contracts = (
+        build_identifier_contract_map(
+            identifier_registry
         )
-    }
+    )
+
+    seen_link_ids: set[str] = set()
+    seen_contracts: set[
+        tuple[
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+        ]
+    ] = set()
+
+    for index, link in enumerate(links):
+        if not isinstance(link, dict):
+            errors.append(
+                f"links[{index}] must be an object."
+            )
+            continue
+
+        link_id = link.get("link_id")
+
+        if isinstance(link_id, str):
+            if link_id in seen_link_ids:
+                errors.append(
+                    f"Compatibility link '{link_id}' "
+                    "appears more than once."
+                )
+
+            seen_link_ids.add(link_id)
+
+        source = link.get(
+            "source",
+            {},
+        )
+
+        target = link.get(
+            "target",
+            {},
+        )
+
+        if not isinstance(source, dict):
+            continue
+
+        if not isinstance(target, dict):
+            continue
+
+        source_stage = source.get("stage")
+        target_stage = target.get("stage")
+        canonical_id = link.get("canonical_id")
+
+        source_position = STAGE_POSITIONS.get(
+            str(source_stage)
+        )
+
+        target_position = STAGE_POSITIONS.get(
+            str(target_stage)
+        )
+
+        if (
+            source_position is not None
+            and target_position is not None
+            and source_position >= target_position
+        ):
+            errors.append(
+                f"Compatibility link '{link_id}' "
+                f"must point from an earlier stage; "
+                f"received '{source_stage}' to "
+                f"'{target_stage}'."
+            )
+
+        contract = identifier_contracts.get(
+            str(canonical_id)
+        )
+
+        if contract is None:
+            errors.append(
+                f"Compatibility link '{link_id}' "
+                f"uses unregistered canonical ID "
+                f"'{canonical_id}'."
+            )
+        elif (
+            contract.get("producer_stage")
+            != source_stage
+        ):
+            errors.append(
+                f"Compatibility link '{link_id}' "
+                f"uses '{canonical_id}' from "
+                f"'{source_stage}', but the identifier "
+                f"registry assigns its producer to "
+                f"'{contract.get('producer_stage')}'."
+            )
+
+        contract_key = (
+            str(source_stage),
+            str(source.get("protocol_id")),
+            str(source.get("record_type")),
+            str(target_stage),
+            str(target.get("protocol_id")),
+            str(canonical_id),
+        )
+
+        if contract_key in seen_contracts:
+            errors.append(
+                f"Compatibility contract for "
+                f"'{canonical_id}' from "
+                f"'{source_stage}' to "
+                f"'{target_stage}' is duplicated."
+            )
+
+        seen_contracts.add(contract_key)
+
+    return errors
+
+
+def registry_binding_errors(
+    profile: dict[str, Any],
+    profile_field: str,
+    registry: dict[str, Any],
+    registry_path: Path,
+) -> list[str]:
+    errors: list[str] = []
+
+    binding = profile.get(
+        profile_field,
+        {},
+    )
+
+    if not isinstance(binding, dict):
+        return [
+            f"{profile_field} must be an object."
+        ]
+
+    if (
+        binding.get("registry_id")
+        != registry.get("registry_id")
+    ):
+        errors.append(
+            f"{profile_field}.registry_id "
+            "does not match the loaded registry."
+        )
+
+    if (
+        binding.get("version")
+        != registry.get("version")
+    ):
+        errors.append(
+            f"{profile_field}.version "
+            "does not match the loaded registry."
+        )
+
+    registry_ref = binding.get(
+        "registry_ref"
+    )
+
+    if isinstance(registry_ref, str):
+        declared_path = (
+            ROOT
+            / registry_ref
+        ).resolve()
+
+        if declared_path != registry_path.resolve():
+            errors.append(
+                f"{profile_field}.registry_ref "
+                "does not resolve to the expected registry."
+            )
+
+    return errors
+
+
+def protocol_summary(
+    stage: str,
+    binding: dict[str, Any],
+) -> str:
+    protocol = binding.get(
+        "protocol",
+        {},
+    )
+
+    if not isinstance(protocol, dict):
+        return f"{stage}:<invalid-protocol>"
+
+    return (
+        f"{stage}:"
+        f"{protocol.get('protocol_id')}"
+        f"@{protocol.get('version')}"
+        f"/{protocol.get('record_type')}"
+    )
+
+
+def matching_compatibility_links(
+    compatibility_registry: dict[str, Any],
+    source_stage: str,
+    source_binding: dict[str, Any],
+    target_stage: str,
+    target_binding: dict[str, Any],
+    canonical_id: str,
+) -> list[dict[str, Any]]:
+    source_protocol = source_binding.get(
+        "protocol",
+        {},
+    )
+
+    target_protocol = target_binding.get(
+        "protocol",
+        {},
+    )
+
+    if not isinstance(source_protocol, dict):
+        return []
+
+    if not isinstance(target_protocol, dict):
+        return []
+
+    links = compatibility_registry.get(
+        "links",
+        [],
+    )
+
+    if not isinstance(links, list):
+        return []
+
+    matches: list[dict[str, Any]] = []
+
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+
+        source = link.get(
+            "source",
+            {},
+        )
+
+        target = link.get(
+            "target",
+            {},
+        )
+
+        if not isinstance(source, dict):
+            continue
+
+        if not isinstance(target, dict):
+            continue
+
+        source_versions = source.get(
+            "versions",
+            [],
+        )
+
+        target_versions = target.get(
+            "versions",
+            [],
+        )
+
+        if not isinstance(source_versions, list):
+            continue
+
+        if not isinstance(target_versions, list):
+            continue
+
+        if (
+            source.get("stage") == source_stage
+            and source.get("protocol_id")
+            == source_protocol.get("protocol_id")
+            and source.get("record_type")
+            == source_protocol.get("record_type")
+            and source_protocol.get("version")
+            in source_versions
+            and target.get("stage") == target_stage
+            and target.get("protocol_id")
+            == target_protocol.get("protocol_id")
+            and target.get("record_type")
+            == target_protocol.get("record_type")
+            and target_protocol.get("version")
+            in target_versions
+            and link.get("canonical_id")
+            == canonical_id
+        ):
+            matches.append(link)
+
+    return matches
 
 
 def profile_semantic_errors(
     profile: dict[str, Any],
-    registry: dict[str, Any],
+    identifier_registry: dict[str, Any],
+    compatibility_registry: dict[str, Any],
 ) -> list[str]:
     errors: list[str] = []
+
+    errors.extend(
+        registry_binding_errors(
+            profile,
+            "identifier_registry",
+            identifier_registry,
+            IDENTIFIER_REGISTRY_PATH,
+        )
+    )
+
+    errors.extend(
+        registry_binding_errors(
+            profile,
+            "compatibility_registry",
+            compatibility_registry,
+            COMPATIBILITY_REGISTRY_PATH,
+        )
+    )
+
+    if (
+        profile.get("identifier_namespace")
+        != identifier_registry.get("namespace")
+    ):
+        errors.append(
+            "Profile identifier_namespace does not "
+            "match the identifier registry namespace."
+        )
+
+    if (
+        profile.get("identifier_namespace")
+        != compatibility_registry.get("namespace")
+    ):
+        errors.append(
+            "Profile identifier_namespace does not "
+            "match the compatibility registry namespace."
+        )
 
     sequence = profile.get(
         "profile_sequence",
@@ -286,62 +647,9 @@ def profile_semantic_errors(
     )
 
     if not isinstance(sequence, list):
-        return [
+        return errors + [
             "profile_sequence must be an array."
         ]
-
-    registry_binding = profile.get(
-        "identifier_registry",
-        {},
-    )
-
-    if not isinstance(registry_binding, dict):
-        return [
-            "identifier_registry must be an object."
-        ]
-
-    if (
-        registry_binding.get("registry_id")
-        != registry.get("registry_id")
-    ):
-        errors.append(
-            "Profile identifier_registry.registry_id "
-            "does not match the loaded registry."
-        )
-
-    if (
-        registry_binding.get("version")
-        != registry.get("version")
-    ):
-        errors.append(
-            "Profile identifier_registry.version "
-            "does not match the loaded registry."
-        )
-
-    if (
-        profile.get("identifier_namespace")
-        != registry.get("namespace")
-    ):
-        errors.append(
-            "Profile identifier_namespace "
-            "does not match the registry namespace."
-        )
-
-    registry_ref = registry_binding.get(
-        "registry_ref"
-    )
-
-    if isinstance(registry_ref, str):
-        declared_registry_path = (
-            ROOT
-            / registry_ref
-        ).resolve()
-
-        if declared_registry_path != REGISTRY_PATH.resolve():
-            errors.append(
-                "identifier_registry.registry_ref "
-                "does not resolve to the canonical registry."
-            )
 
     actual_stages = tuple(
         binding.get("stage")
@@ -356,13 +664,21 @@ def profile_semantic_errors(
             + "."
         )
 
-    stage_positions: dict[str, int] = {}
-    produced_by_stage: dict[str, set[str]] = {}
+    bindings_by_stage: dict[
+        str,
+        dict[str, Any],
+    ] = {}
+
+    produced_by_stage: dict[
+        str,
+        set[str],
+    ] = {}
 
     for index, binding in enumerate(sequence):
         if not isinstance(binding, dict):
             errors.append(
-                f"profile_sequence[{index}] must be an object."
+                f"profile_sequence[{index}] "
+                "must be an object."
             )
             continue
 
@@ -372,18 +688,21 @@ def profile_semantic_errors(
         if stage not in EXPECTED_STAGES:
             continue
 
-        if stage in stage_positions:
+        stage_name = str(stage)
+
+        if stage_name in bindings_by_stage:
             errors.append(
-                f"Stage '{stage}' appears more than once."
+                f"Stage '{stage_name}' "
+                "appears more than once."
             )
 
-        stage_positions[stage] = index
+        bindings_by_stage[stage_name] = binding
 
         expected_position = index + 1
 
         if position != expected_position:
             errors.append(
-                f"Stage '{stage}' has position "
+                f"Stage '{stage_name}' has position "
                 f"{position}; expected "
                 f"{expected_position}."
             )
@@ -410,16 +729,18 @@ def profile_semantic_errors(
             set(produced_ids)
         ):
             errors.append(
-                f"Stage '{stage}' produces "
+                f"Stage '{stage_name}' produces "
                 "duplicate canonical identifiers."
             )
 
-        produced_by_stage[stage] = set(
+        produced_by_stage[stage_name] = set(
             produced_ids
         )
 
-    contract_map = build_contract_map(
-        registry
+    identifier_contracts = (
+        build_identifier_contract_map(
+            identifier_registry
+        )
     )
 
     global_producers: dict[str, str] = {}
@@ -443,15 +764,14 @@ def profile_semantic_errors(
                     canonical_id
                 ] = stage
 
-            contract = contract_map.get(
+            contract = identifier_contracts.get(
                 canonical_id
             )
 
             if contract is None:
                 errors.append(
                     f"Produced canonical ID "
-                    f"'{canonical_id}' is not "
-                    "registered."
+                    f"'{canonical_id}' is not registered."
                 )
                 continue
 
@@ -462,20 +782,23 @@ def profile_semantic_errors(
             if declared_stage != stage:
                 errors.append(
                     f"Identifier contract "
-                    f"'{canonical_id}' declares "
-                    f"producer '{declared_stage}', "
-                    f"but the profile produces it "
-                    f"at stage '{stage}'."
+                    f"'{canonical_id}' declares producer "
+                    f"'{declared_stage}', but the profile "
+                    f"produces it at stage '{stage}'."
                 )
 
-    for index, binding in enumerate(sequence):
+    for target_index, binding in enumerate(sequence):
         if not isinstance(binding, dict):
             continue
 
-        stage = binding.get("stage")
+        target_stage = binding.get("stage")
 
-        if stage not in EXPECTED_STAGES:
+        if target_stage not in EXPECTED_STAGES:
             continue
+
+        target_stage_name = str(
+            target_stage
+        )
 
         seen_inputs: set[
             tuple[str, str]
@@ -488,85 +811,159 @@ def profile_semantic_errors(
             if not isinstance(item, dict):
                 continue
 
-            source_stage = item.get(
-                "from_stage"
+            source_stage = str(
+                item.get("from_stage")
             )
 
-            canonical_id = item.get(
-                "canonical_id"
+            canonical_id = str(
+                item.get("canonical_id")
             )
 
-            link = (
-                str(source_stage),
-                str(canonical_id),
+            link_key = (
+                source_stage,
+                canonical_id,
             )
 
-            if link in seen_inputs:
+            if link_key in seen_inputs:
                 errors.append(
-                    f"Stage '{stage}' consumes "
-                    f"duplicate link "
+                    f"Stage '{target_stage_name}' "
+                    f"consumes duplicate link "
                     f"'{source_stage}:{canonical_id}'."
                 )
 
-            seen_inputs.add(link)
+            seen_inputs.add(link_key)
 
-            contract = contract_map.get(
-                str(canonical_id)
+            identifier_contract = (
+                identifier_contracts.get(
+                    canonical_id
+                )
             )
 
-            if contract is None:
+            if identifier_contract is None:
                 errors.append(
                     f"Consumed canonical ID "
-                    f"'{canonical_id}' is not "
-                    "registered."
+                    f"'{canonical_id}' is not registered."
                 )
-            else:
-                declared_stage = contract.get(
+            elif (
+                identifier_contract.get(
                     "producer_stage"
                 )
+                != source_stage
+            ):
+                errors.append(
+                    f"Stage '{target_stage_name}' "
+                    f"declares '{canonical_id}' from "
+                    f"'{source_stage}', but its registry "
+                    f"producer is "
+                    f"'{identifier_contract.get('producer_stage')}'."
+                )
 
-                if declared_stage != source_stage:
-                    errors.append(
-                        f"Stage '{stage}' declares "
-                        f"'{canonical_id}' from "
-                        f"'{source_stage}', but its "
-                        f"registry producer is "
-                        f"'{declared_stage}'."
-                    )
-
-            source_position = stage_positions.get(
-                str(source_stage)
+            source_position = (
+                STAGE_POSITIONS.get(
+                    source_stage
+                )
             )
 
             if source_position is None:
                 errors.append(
-                    f"Stage '{stage}' references "
-                    f"unknown source stage "
+                    f"Stage '{target_stage_name}' "
+                    f"references unknown source stage "
                     f"'{source_stage}'."
                 )
                 continue
 
-            if source_position >= index:
+            if source_position >= target_index:
                 errors.append(
-                    f"Stage '{stage}' consumes "
-                    f"'{canonical_id}' from "
+                    f"Stage '{target_stage_name}' "
+                    f"consumes '{canonical_id}' from "
                     f"non-earlier stage "
                     f"'{source_stage}'."
                 )
 
             source_outputs = (
                 produced_by_stage.get(
-                    str(source_stage),
+                    source_stage,
                     set(),
                 )
             )
 
             if canonical_id not in source_outputs:
                 errors.append(
-                    f"Stage '{stage}' consumes "
+                    f"Stage '{target_stage_name}' "
+                    f"consumes '{canonical_id}' from "
+                    f"'{source_stage}', but that stage "
+                    "does not produce it."
+                )
+
+            source_binding = (
+                bindings_by_stage.get(
+                    source_stage
+                )
+            )
+
+            if source_binding is None:
+                continue
+
+            matches = (
+                matching_compatibility_links(
+                    compatibility_registry,
+                    source_stage,
+                    source_binding,
+                    target_stage_name,
+                    binding,
+                    canonical_id,
+                )
+            )
+
+            if not matches:
+                errors.append(
+                    f"No compatibility contract for "
                     f"'{canonical_id}' from "
-                    f"'{source_stage}', but that "
-                    "stage does not produce it."
+                    f"{protocol_summary(source_stage, source_binding)} "
+                    f"to "
+                    f"{protocol_summary(target_stage_name, binding)}."
+                )
+                continue
+
+            compatible_matches = [
+                match
+                for match in matches
+                if match.get("disposition")
+                == "compatible"
+            ]
+
+            if not compatible_matches:
+                dispositions = sorted(
+                    {
+                        str(
+                            match.get(
+                                "disposition"
+                            )
+                        )
+                        for match in matches
+                    }
+                )
+
+                link_ids = sorted(
+                    {
+                        str(
+                            match.get(
+                                "link_id"
+                            )
+                        )
+                        for match in matches
+                    }
+                )
+
+                errors.append(
+                    f"Compatibility for "
+                    f"'{canonical_id}' from "
+                    f"'{source_stage}' to "
+                    f"'{target_stage_name}' is not "
+                    f"usable; dispositions: "
+                    f"{', '.join(dispositions)}; "
+                    f"contracts: "
+                    f"{', '.join(link_ids)}."
                 )
 
     for canonical_id, (
@@ -580,16 +977,10 @@ def profile_semantic_errors(
             )
         ):
             errors.append(
-                f"Stage '{required_stage}' "
-                f"must produce canonical ID "
+                f"Stage '{required_stage}' must "
+                f"produce canonical ID "
                 f"'{canonical_id}'."
             )
-
-    bindings_by_stage = {
-        binding.get("stage"): binding
-        for binding in sequence
-        if isinstance(binding, dict)
-    }
 
     for consumer_stage, (
         source_stage,
@@ -626,54 +1017,50 @@ def profile_semantic_errors(
     return errors
 
 
-def collect_yaml_files(
-    directory: Path,
-) -> list[Path]:
-    return sorted(
-        [
-            *directory.glob("*.yaml"),
-            *directory.glob("*.yml"),
-        ]
-    )
-
-
 def validate_registry(
+    label: str,
+    path: Path,
     registry: dict[str, Any],
-    registry_schema: dict[str, Any],
+    schema: dict[str, Any],
+    semantic_validator: Any,
 ) -> bool:
     print(
-        f"[validate-registry] "
-        f"{REGISTRY_PATH.relative_to(ROOT)}"
+        f"[validate-{label}] "
+        f"{path.relative_to(ROOT)}"
     )
 
     errors = schema_errors(
         registry,
-        registry_schema,
+        schema,
     )
 
     if errors:
         for error in errors:
             print(
-                f"[registry-schema-error] "
+                f"[{label}-schema-error] "
                 f"{error}"
             )
         return False
 
-    print("[registry-schema-ok]")
+    print(
+        f"[{label}-schema-ok]"
+    )
 
-    errors = registry_semantic_errors(
+    errors = semantic_validator(
         registry
     )
 
     if errors:
         for error in errors:
             print(
-                f"[registry-semantic-error] "
+                f"[{label}-semantic-error] "
                 f"{error}"
             )
         return False
 
-    print("[registry-semantic-ok]")
+    print(
+        f"[{label}-semantic-ok]"
+    )
 
     return True
 
@@ -681,7 +1068,8 @@ def validate_registry(
 def validate_expected_pass(
     path: Path,
     profile_schema: dict[str, Any],
-    registry: dict[str, Any],
+    identifier_registry: dict[str, Any],
+    compatibility_registry: dict[str, Any],
 ) -> bool:
     print(
         f"[validate-pass] "
@@ -710,7 +1098,8 @@ def validate_expected_pass(
 
     errors = profile_semantic_errors(
         profile,
-        registry,
+        identifier_registry,
+        compatibility_registry,
     )
 
     if errors:
@@ -728,7 +1117,8 @@ def validate_expected_pass(
 def validate_expected_fail(
     path: Path,
     profile_schema: dict[str, Any],
-    registry: dict[str, Any],
+    identifier_registry: dict[str, Any],
+    compatibility_registry: dict[str, Any],
 ) -> bool:
     print(
         f"[validate-fail] "
@@ -759,7 +1149,8 @@ def validate_expected_fail(
 
     errors = profile_semantic_errors(
         profile,
-        registry,
+        identifier_registry,
+        compatibility_registry,
     )
 
     if errors:
@@ -790,8 +1181,13 @@ def main() -> int:
     )
 
     print(
-        "registry schema: "
-        f"{REGISTRY_SCHEMA_PATH.relative_to(ROOT)}"
+        "identifier schema: "
+        f"{IDENTIFIER_SCHEMA_PATH.relative_to(ROOT)}"
+    )
+
+    print(
+        "compatibility schema: "
+        f"{COMPATIBILITY_SCHEMA_PATH.relative_to(ROOT)}"
     )
 
     print()
@@ -801,12 +1197,20 @@ def main() -> int:
             PROFILE_SCHEMA_PATH
         )
 
-        registry_schema = load_json(
-            REGISTRY_SCHEMA_PATH
+        identifier_schema = load_json(
+            IDENTIFIER_SCHEMA_PATH
         )
 
-        registry = load_yaml(
-            REGISTRY_PATH
+        compatibility_schema = load_json(
+            COMPATIBILITY_SCHEMA_PATH
+        )
+
+        identifier_registry = load_yaml(
+            IDENTIFIER_REGISTRY_PATH
+        )
+
+        compatibility_registry = load_yaml(
+            COMPATIBILITY_REGISTRY_PATH
         )
 
         Draft202012Validator.check_schema(
@@ -814,7 +1218,11 @@ def main() -> int:
         )
 
         Draft202012Validator.check_schema(
-            registry_schema
+            identifier_schema
+        )
+
+        Draft202012Validator.check_schema(
+            compatibility_schema
         )
 
     except Exception as exc:
@@ -822,8 +1230,33 @@ def main() -> int:
         return 1
 
     success = validate_registry(
-        registry,
-        registry_schema,
+        "identifier-registry",
+        IDENTIFIER_REGISTRY_PATH,
+        identifier_registry,
+        identifier_schema,
+        identifier_registry_semantic_errors,
+    )
+
+    print()
+
+    compatibility_validator = (
+        lambda registry: (
+            compatibility_registry_semantic_errors(
+                registry,
+                identifier_registry,
+            )
+        )
+    )
+
+    success = (
+        validate_registry(
+            "compatibility-registry",
+            COMPATIBILITY_REGISTRY_PATH,
+            compatibility_registry,
+            compatibility_schema,
+            compatibility_validator,
+        )
+        and success
     )
 
     print()
@@ -847,7 +1280,8 @@ def main() -> int:
             validate_expected_pass(
                 path,
                 profile_schema,
-                registry,
+                identifier_registry,
+                compatibility_registry,
             )
             and success
         )
@@ -859,7 +1293,8 @@ def main() -> int:
             validate_expected_fail(
                 path,
                 profile_schema,
-                registry,
+                identifier_registry,
+                compatibility_registry,
             )
             and success
         )
@@ -868,7 +1303,7 @@ def main() -> int:
 
     if success:
         print(
-            "All registry and interoperability "
+            "All registries and interoperability "
             "profile examples behaved as expected."
         )
         return 0
