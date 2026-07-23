@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://civilization-os.example/schemas/canonical-identifier-registry.schema.json",
+  "title": "Civilization OS Canonical Identifier Registry",
+  "description": "Defines canonical identifier semantics shared by Civilization OS interoperability profiles.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "registry_kind",
+    "registry_id",
+    "version",
+    "namespace",
+    "status",
+    "identifiers"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "registry_kind": {
+      "const": "civilization-os-canonical-identifier-registry"
+    },
+    "registry_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^v?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+    },
+    "namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z0-9-]+)+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "deprecated"
+      ]
+    },
+    "identifiers": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "$ref": "#/$defs/identifierContract"
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "identifierContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_id",
+        "producer_stage",
+        "semantic_type",
+        "value_type",
+        "cardinality",
+        "mutability",
+        "integrity",
+        "description"
+      ],
+      "properties": {
+        "canonical_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*_id$"
+        },
+        "producer_stage": {
+          "type": "string",
+          "enum": [
+            "origin",
+            "trace",
+            "authorization",
+            "execution",
+            "audit",
+            "royalty"
+          ]
+        },
+        "semantic_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+        },
+        "value_type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "object",
+            "array"
+          ]
+        },
+        "cardinality": {
+          "type": "string",
+          "enum": [
+            "one",
+            "zero-or-one",
+            "one-or-many",
+            "zero-or-many"
+          ]
+        },
+        "mutability": {
+          "type": "string",
+          "enum": [
+            "immutable",
+            "append-only",
+            "mutable"
+          ]
+        },
+        "integrity": {
+          "type": "string",
+          "enum": [
+            "none",
+            "digest",
+            "signature",
+            "digest-and-signature"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    }
+  }
+}
