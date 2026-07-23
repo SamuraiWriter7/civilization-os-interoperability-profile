@@ -1,4 +1,4 @@
-schema_version: "0.3.0"
+schema_version: "0.5.0"
 profile_kind: civilization-os-interoperability-profile
 profile_id: invalid-future-stage-reference
 status: draft
@@ -15,8 +15,22 @@ identifier_registry:
 
 compatibility_registry:
   registry_id: kazene-core-compatibility
-  version: v0.3
+  version: v0.4
   registry_ref: registry/protocol-compatibility.yaml
+
+adapter_registry:
+  registry_id: kazene-core-adapters
+  version: v0.4
+  registry_ref: registry/protocol-adapters.yaml
+
+adapter_bindings: []
+
+resolution_policy:
+  require_resolution_receipt: true
+  require_digest_lock: true
+  require_exact_stage_snapshot: true
+  require_conformance_handoff: true
+  handoff_target: kazene-protocol-conformance-suite
 
 profile_sequence:
   - stage: origin
@@ -49,7 +63,7 @@ profile_sequence:
     produces:
       - canonical_id: trace_id
         local_field: trace_record_id
-    notes: Carries the origin context into the observable trace chain.
+    notes: Carries the provenance root into the observable trace chain.
 
   - stage: authorization
     position: 3
@@ -154,6 +168,12 @@ conformance:
   require_compatibility_resolution: true
   require_exact_protocol_versions: true
   reject_blocked_compatibility: true
+  require_adapter_resolution: true
+  reject_unbound_adapters: true
+  reject_lossy_adapters: true
+  require_resolution_receipt: true
+  require_digest_lock: true
+  require_conformance_handoff: true
   reject_unknown_stages: true
   allow_optional_profiles: false
 
