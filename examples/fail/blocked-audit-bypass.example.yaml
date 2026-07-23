@@ -1,4 +1,4 @@
-schema_version: "0.3.0"
+schema_version: "0.5.0"
 profile_kind: civilization-os-interoperability-profile
 profile_id: invalid-blocked-audit-bypass
 status: draft
@@ -16,8 +16,22 @@ identifier_registry:
 
 compatibility_registry:
   registry_id: kazene-core-compatibility
-  version: v0.3
+  version: v0.4
   registry_ref: registry/protocol-compatibility.yaml
+
+adapter_registry:
+  registry_id: kazene-core-adapters
+  version: v0.4
+  registry_ref: registry/protocol-adapters.yaml
+
+adapter_bindings: []
+
+resolution_policy:
+  require_resolution_receipt: true
+  require_digest_lock: true
+  require_exact_stage_snapshot: true
+  require_conformance_handoff: true
+  handoff_target: kazene-protocol-conformance-suite
 
 profile_sequence:
   - stage: origin
@@ -32,6 +46,7 @@ profile_sequence:
     produces:
       - canonical_id: origin_id
         local_field: origin_receipt_id
+    notes: Establishes the source, creator, and provenance root.
 
   - stage: trace
     position: 2
@@ -49,6 +64,7 @@ profile_sequence:
     produces:
       - canonical_id: trace_id
         local_field: trace_record_id
+    notes: Carries the provenance root into the observable trace chain.
 
   - stage: authorization
     position: 3
@@ -71,6 +87,7 @@ profile_sequence:
     produces:
       - canonical_id: authorization_receipt_id
         local_field: authorization_receipt_id
+    notes: Records the authorization decision for the requested action.
 
   - stage: execution
     position: 4
@@ -93,6 +110,7 @@ profile_sequence:
     produces:
       - canonical_id: execution_id
         local_field: execution_id
+    notes: Binds execution evidence to its authorization and trace chain.
 
   - stage: audit
     position: 5
@@ -115,6 +133,7 @@ profile_sequence:
     produces:
       - canonical_id: audit_id
         local_field: audit_record_id
+    notes: Verifies authorization and execution evidence.
 
   - stage: royalty
     position: 6
@@ -143,9 +162,9 @@ profile_sequence:
       - canonical_id: allocation_id
         local_field: allocation_ledger_id
     notes: >-
-      Invalid binding. Royalty attempts to consume execution_id directly,
-      bypassing the compatibility requirement that value allocation must
-      depend on audit_id.
+      Invalid binding. Royalty attempts to consume raw execution_id
+      directly even though the compatibility registry explicitly blocks
+      the Execution-to-Royalty audit-bypass route.
 
 conformance:
   require_ordered_execution: true
@@ -156,9 +175,18 @@ conformance:
   require_compatibility_resolution: true
   require_exact_protocol_versions: true
   reject_blocked_compatibility: true
+  require_adapter_resolution: true
+  reject_unbound_adapters: true
+  reject_lossy_adapters: true
+  require_resolution_receipt: true
+  require_digest_lock: true
+  require_conformance_handoff: true
   reject_unknown_stages: true
   allow_optional_profiles: false
 
 extensions:
   expected_failure: blocked-compatibility
   blocked_link_id: execution-to-royalty-direct-bypass
+  invalid_source_stage: execution
+  invalid_target_stage: royalty
+  invalid_identifier: execution_id
