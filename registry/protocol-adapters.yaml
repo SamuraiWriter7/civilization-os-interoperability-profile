@@ -1,0 +1,43 @@
+schema_version: "0.4.0"
+registry_kind: civilization-os-protocol-adapter-registry
+registry_id: kazene-core-adapters
+version: v0.4
+namespace: org.kazene.civilization-os
+status: draft
+
+adapters:
+  - adapter_id: trace-relay-v0-9-to-authorization-v0-5
+    adapter_version: v0.1
+    status: active
+
+    source:
+      stage: trace
+      protocol_id: trace-relay-protocol
+      version: v0.9
+      record_type: trace_relay_record
+
+    target:
+      stage: authorization
+      protocol_id: agent-action-authorization-receipt-protocol
+      version: v0.5
+      record_type: action_authorization_receipt
+
+    canonical_id: trace_id
+
+    transforms:
+      - operation: copy
+        from_field: trace_record_id
+        to_field: evidence_refs.trace_id
+        required: true
+
+    lossiness: lossless
+    integrity_behavior: preserve
+
+    description: >-
+      Maps the legacy Trace Relay v0.9 trace identifier into the
+      Authorization Receipt v0.5 evidence reference without changing
+      the canonical trace_id value.
+
+extensions:
+  registry_owner: SamuraiWriter7
+  adapter_policy: explicit-binding
