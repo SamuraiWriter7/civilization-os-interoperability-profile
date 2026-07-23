@@ -1,0 +1,200 @@
+schema_version: "0.3.0"
+registry_kind: civilization-os-protocol-compatibility-registry
+registry_id: kazene-core-compatibility
+version: v0.3
+namespace: org.kazene.civilization-os
+status: draft
+
+links:
+  - link_id: origin-to-trace
+    source:
+      stage: origin
+      protocol_id: origin-trace-receipt
+      versions:
+        - v0.5
+      record_type: origin_trace_receipt
+    target:
+      stage: trace
+      protocol_id: trace-relay-protocol
+      versions:
+        - v1.0
+      record_type: trace_relay_record
+    canonical_id: origin_id
+    disposition: compatible
+    description: >-
+      Allows the Trace stage to inherit the provenance root established
+      by the Origin stage.
+
+  - link_id: origin-to-authorization
+    source:
+      stage: origin
+      protocol_id: origin-trace-receipt
+      versions:
+        - v0.5
+      record_type: origin_trace_receipt
+    target:
+      stage: authorization
+      protocol_id: agent-action-authorization-receipt-protocol
+      versions:
+        - v0.5
+      record_type: action_authorization_receipt
+    canonical_id: origin_id
+    disposition: compatible
+    description: >-
+      Allows an authorization decision to reference the original
+      provenance root.
+
+  - link_id: trace-to-authorization
+    source:
+      stage: trace
+      protocol_id: trace-relay-protocol
+      versions:
+        - v1.0
+      record_type: trace_relay_record
+    target:
+      stage: authorization
+      protocol_id: agent-action-authorization-receipt-protocol
+      versions:
+        - v0.5
+      record_type: action_authorization_receipt
+    canonical_id: trace_id
+    disposition: compatible
+    description: >-
+      Allows observable trace evidence to support an authorization
+      decision.
+
+  - link_id: authorization-to-execution
+    source:
+      stage: authorization
+      protocol_id: agent-action-authorization-receipt-protocol
+      versions:
+        - v0.5
+      record_type: action_authorization_receipt
+    target:
+      stage: execution
+      protocol_id: agent-action-authorization-receipt-protocol
+      versions:
+        - v0.5
+      record_type: authorization_execution_evidence
+    canonical_id: authorization_receipt_id
+    disposition: compatible
+    description: >-
+      Allows execution evidence to be bound to the authorization receipt
+      that permitted or constrained the action.
+
+  - link_id: trace-to-execution
+    source:
+      stage: trace
+      protocol_id: trace-relay-protocol
+      versions:
+        - v1.0
+      record_type: trace_relay_record
+    target:
+      stage: execution
+      protocol_id: agent-action-authorization-receipt-protocol
+      versions:
+        - v0.5
+      record_type: authorization_execution_evidence
+    canonical_id: trace_id
+    disposition: compatible
+    description: >-
+      Allows execution evidence to preserve its associated trace chain.
+
+  - link_id: authorization-to-audit
+    source:
+      stage: authorization
+      protocol_id: agent-action-authorization-receipt-protocol
+      versions:
+        - v0.5
+      record_type: action_authorization_receipt
+    target:
+      stage: audit
+      protocol_id: agentic-marketplace-audit
+      versions:
+        - v0.5
+      record_type: agentic_marketplace_audit_record
+    canonical_id: authorization_receipt_id
+    disposition: compatible
+    description: >-
+      Allows the Audit stage to verify the original authorization
+      decision.
+
+  - link_id: execution-to-audit
+    source:
+      stage: execution
+      protocol_id: agent-action-authorization-receipt-protocol
+      versions:
+        - v0.5
+      record_type: authorization_execution_evidence
+    target:
+      stage: audit
+      protocol_id: agentic-marketplace-audit
+      versions:
+        - v0.5
+      record_type: agentic_marketplace_audit_record
+    canonical_id: execution_id
+    disposition: compatible
+    description: >-
+      Allows the Audit stage to inspect actual execution evidence.
+
+  - link_id: origin-to-royalty
+    source:
+      stage: origin
+      protocol_id: origin-trace-receipt
+      versions:
+        - v0.5
+      record_type: origin_trace_receipt
+    target:
+      stage: royalty
+      protocol_id: royalty-allocation-ledger-agent
+      versions:
+        - v0.5
+      record_type: allocation_ledger_record
+    canonical_id: origin_id
+    disposition: compatible
+    description: >-
+      Allows royalty allocation to preserve the provenance root of the
+      value-producing contribution.
+
+  - link_id: audit-to-royalty
+    source:
+      stage: audit
+      protocol_id: agentic-marketplace-audit
+      versions:
+        - v0.5
+      record_type: agentic_marketplace_audit_record
+    target:
+      stage: royalty
+      protocol_id: royalty-allocation-ledger-agent
+      versions:
+        - v0.5
+      record_type: allocation_ledger_record
+    canonical_id: audit_id
+    disposition: compatible
+    description: >-
+      Allows royalty allocation only after the associated evidence has
+      passed the Audit stage.
+
+  - link_id: execution-to-royalty-direct-bypass
+    source:
+      stage: execution
+      protocol_id: agent-action-authorization-receipt-protocol
+      versions:
+        - v0.5
+      record_type: authorization_execution_evidence
+    target:
+      stage: royalty
+      protocol_id: royalty-allocation-ledger-agent
+      versions:
+        - v0.5
+      record_type: allocation_ledger_record
+    canonical_id: execution_id
+    disposition: blocked
+    description: >-
+      Raw execution evidence must not be connected directly to Royalty
+      in a way that bypasses the mandatory Audit stage.
+
+extensions:
+  registry_owner: SamuraiWriter7
+  lifecycle_scope: kazene-core
+  compatibility_policy: explicit-allow
