@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://civilization-os.example/schemas/protocol-compatibility-registry.schema.json",
   "title": "Civilization OS Protocol Compatibility Registry",
-  "description": "Defines allowed, blocked, deprecated, and adapter-dependent connections between Civilization OS protocol versions.",
+  "description": "Defines direct, adapter-mediated, blocked, and deprecated connections between Civilization OS protocol versions.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "0.3.0"
+      "const": "0.4.0"
     },
     "registry_kind": {
       "const": "civilization-os-protocol-compatibility-registry"
@@ -93,10 +93,9 @@
             "deprecated"
           ]
         },
-        "adapter_ref": {
+        "adapter_id": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 500
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
         },
         "description": {
           "type": "string",
@@ -118,7 +117,7 @@
           },
           "then": {
             "required": [
-              "adapter_ref"
+              "adapter_id"
             ]
           }
         }
