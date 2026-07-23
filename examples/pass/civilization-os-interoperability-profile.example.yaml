@@ -1,12 +1,18 @@
-schema_version: "0.1.0"
+schema_version: "0.2.0"
 profile_kind: civilization-os-interoperability-profile
 profile_id: kazene-core-lifecycle
 status: draft
 title: Kazene Core Civilization OS Lifecycle
 description: >-
   Connects independent Origin, Trace, Authorization, Execution, Audit,
-  and Royalty protocols without merging their internal schemas.
+  and Royalty protocols through ordered bindings and a shared canonical
+  identifier registry.
 identifier_namespace: org.kazene.civilization-os
+
+identifier_registry:
+  registry_id: kazene-core-identifiers
+  version: v0.2
+  registry_ref: registry/canonical-identifiers.yaml
 
 profile_sequence:
   - stage: origin
@@ -61,7 +67,7 @@ profile_sequence:
     produces:
       - canonical_id: authorization_receipt_id
         local_field: authorization_receipt_id
-    notes: Records why the requested action is allowed, denied, or held for review.
+    notes: Records why an action is allowed, denied, or held for review.
 
   - stage: execution
     position: 4
@@ -83,7 +89,7 @@ profile_sequence:
     produces:
       - canonical_id: execution_id
         local_field: execution_id
-    notes: Binds actual execution evidence to the authorization decision.
+    notes: Binds execution evidence to the authorization decision.
 
   - stage: audit
     position: 5
@@ -132,6 +138,9 @@ profile_sequence:
 conformance:
   require_ordered_execution: true
   require_reference_resolution: true
+  require_registry_resolution: true
+  require_registered_identifiers: true
+  require_unique_contract_producers: true
   reject_unknown_stages: true
   allow_optional_profiles: false
 
