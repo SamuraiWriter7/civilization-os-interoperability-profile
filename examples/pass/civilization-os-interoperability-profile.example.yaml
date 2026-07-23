@@ -1,18 +1,23 @@
-schema_version: "0.2.0"
+schema_version: "0.3.0"
 profile_kind: civilization-os-interoperability-profile
 profile_id: kazene-core-lifecycle
 status: draft
 title: Kazene Core Civilization OS Lifecycle
 description: >-
   Connects independent Origin, Trace, Authorization, Execution, Audit,
-  and Royalty protocols through ordered bindings and a shared canonical
-  identifier registry.
+  and Royalty protocols through ordered bindings, canonical identifiers,
+  and explicit protocol compatibility contracts.
 identifier_namespace: org.kazene.civilization-os
 
 identifier_registry:
   registry_id: kazene-core-identifiers
   version: v0.2
   registry_ref: registry/canonical-identifiers.yaml
+
+compatibility_registry:
+  registry_id: kazene-core-compatibility
+  version: v0.3
+  registry_ref: registry/protocol-compatibility.yaml
 
 profile_sequence:
   - stage: origin
@@ -45,7 +50,7 @@ profile_sequence:
     produces:
       - canonical_id: trace_id
         local_field: trace_record_id
-    notes: Carries origin context into the observable action chain.
+    notes: Carries origin context into the observable trace chain.
 
   - stage: authorization
     position: 3
@@ -60,6 +65,7 @@ profile_sequence:
         from_stage: origin
         local_field: evidence_refs.origin_id
         required: true
+
       - canonical_id: trace_id
         from_stage: trace
         local_field: evidence_refs.trace_id
@@ -82,6 +88,7 @@ profile_sequence:
         from_stage: authorization
         local_field: authorization_receipt_ref
         required: true
+
       - canonical_id: trace_id
         from_stage: trace
         local_field: trace_ref
@@ -104,6 +111,7 @@ profile_sequence:
         from_stage: authorization
         local_field: authorization_ref
         required: true
+
       - canonical_id: execution_id
         from_stage: execution
         local_field: execution_ref
@@ -111,7 +119,7 @@ profile_sequence:
     produces:
       - canonical_id: audit_id
         local_field: audit_record_id
-    notes: Verifies cross-protocol consistency and evidence completeness.
+    notes: Verifies authorization and execution evidence.
 
   - stage: royalty
     position: 6
@@ -126,6 +134,7 @@ profile_sequence:
         from_stage: origin
         local_field: source_refs.origin_id
         required: true
+
       - canonical_id: audit_id
         from_stage: audit
         local_field: audit_refs.audit_id
@@ -133,7 +142,7 @@ profile_sequence:
     produces:
       - canonical_id: allocation_id
         local_field: allocation_ledger_id
-    notes: Converts verified contribution evidence into an allocation record.
+    notes: Converts audited contribution evidence into an allocation record.
 
 conformance:
   require_ordered_execution: true
@@ -141,6 +150,9 @@ conformance:
   require_registry_resolution: true
   require_registered_identifiers: true
   require_unique_contract_producers: true
+  require_compatibility_resolution: true
+  require_exact_protocol_versions: true
+  reject_blocked_compatibility: true
   reject_unknown_stages: true
   allow_optional_profiles: false
 
