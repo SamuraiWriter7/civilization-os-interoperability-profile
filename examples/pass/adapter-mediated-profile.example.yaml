@@ -1,11 +1,12 @@
-schema_version: "0.4.0"
+schema_version: "0.5.0"
 profile_kind: civilization-os-interoperability-profile
 profile_id: kazene-legacy-trace-lifecycle
 status: draft
 title: Kazene Legacy Trace Adapter Lifecycle
 description: >-
   Connects Trace Relay v0.9 to Authorization Receipt v0.5 through an
-  explicit lossless protocol adapter.
+  explicitly registered lossless protocol adapter while preserving the
+  canonical trace_id across the lifecycle.
 identifier_namespace: org.kazene.civilization-os
 
 identifier_registry:
@@ -31,6 +32,13 @@ adapter_bindings:
     target_stage: authorization
     canonical_id: trace_id
 
+resolution_policy:
+  require_resolution_receipt: true
+  require_digest_lock: true
+  require_exact_stage_snapshot: true
+  require_conformance_handoff: true
+  handoff_target: kazene-protocol-conformance-suite
+
 profile_sequence:
   - stage: origin
     position: 1
@@ -44,7 +52,9 @@ profile_sequence:
     produces:
       - canonical_id: origin_id
         local_field: origin_receipt_id
-    notes: Establishes the source and provenance root.
+    notes: >-
+      Establishes the source, creator, provenance root, and stable
+      origin identifier for the lifecycle.
 
   - stage: trace
     position: 2
@@ -62,7 +72,9 @@ profile_sequence:
     produces:
       - canonical_id: trace_id
         local_field: trace_record_id
-    notes: Produces the legacy Trace Relay v0.9 trace representation.
+    notes: >-
+      Produces the legacy Trace Relay v0.9 trace representation while
+      preserving the canonical trace_id contract.
 
   - stage: authorization
     position: 3
@@ -85,7 +97,9 @@ profile_sequence:
     produces:
       - canonical_id: authorization_receipt_id
         local_field: authorization_receipt_id
-    notes: Consumes trace_id through the declared adapter binding.
+    notes: >-
+      Consumes the legacy trace_id through the declared adapter binding
+      and records the resulting authorization decision.
 
   - stage: execution
     position: 4
@@ -103,7 +117,9 @@ profile_sequence:
     produces:
       - canonical_id: execution_id
         local_field: execution_id
-    notes: Executes only against the resolved authorization receipt.
+    notes: >-
+      Binds actual execution evidence to the resolved authorization
+      receipt.
 
   - stage: audit
     position: 5
@@ -126,7 +142,9 @@ profile_sequence:
     produces:
       - canonical_id: audit_id
         local_field: audit_record_id
-    notes: Audits authorization and execution evidence.
+    notes: >-
+      Verifies that execution remained consistent with the resolved
+      authorization decision and lifecycle constraints.
 
   - stage: royalty
     position: 6
@@ -149,7 +167,9 @@ profile_sequence:
     produces:
       - canonical_id: allocation_id
         local_field: allocation_ledger_id
-    notes: Produces the final audited allocation record.
+    notes: >-
+      Converts audited origin and contribution evidence into an
+      explainable royalty allocation record.
 
 conformance:
   require_ordered_execution: true
@@ -163,9 +183,16 @@ conformance:
   require_adapter_resolution: true
   reject_unbound_adapters: true
   reject_lossy_adapters: true
+  require_resolution_receipt: true
+  require_digest_lock: true
+  require_conformance_handoff: true
   reject_unknown_stages: true
   allow_optional_profiles: false
 
 extensions:
   profile_owner: SamuraiWriter7
-  adapter_mode: explicit
+  lifecycle_scope: kazene-legacy-trace
+  compatibility_mode: explicit-allow
+  adapter_mode: explicit-binding
+  resolution_mode: digest-locked
+  conformance_target: kazene-protocol-conformance-suite
