@@ -1,0 +1,77 @@
+schema_version: "0.2.0"
+registry_kind: civilization-os-canonical-identifier-registry
+registry_id: kazene-core-identifiers
+version: v0.2
+namespace: org.kazene.civilization-os
+status: draft
+
+identifiers:
+  - canonical_id: origin_id
+    producer_stage: origin
+    semantic_type: origin_reference
+    value_type: string
+    cardinality: one
+    mutability: immutable
+    integrity: digest
+    description: >-
+      Stable reference to the provenance root from which the lifecycle
+      originates.
+
+  - canonical_id: trace_id
+    producer_stage: trace
+    semantic_type: trace_reference
+    value_type: string
+    cardinality: one
+    mutability: append-only
+    integrity: digest
+    description: >-
+      Stable reference to the observable trace chain associated with
+      the action lifecycle.
+
+  - canonical_id: authorization_receipt_id
+    producer_stage: authorization
+    semantic_type: authorization_receipt_reference
+    value_type: string
+    cardinality: one
+    mutability: immutable
+    integrity: signature
+    description: >-
+      Stable reference to the receipt recording whether an action was
+      authorized, denied, or referred for human review.
+
+  - canonical_id: execution_id
+    producer_stage: execution
+    semantic_type: execution_reference
+    value_type: string
+    cardinality: one
+    mutability: append-only
+    integrity: digest
+    description: >-
+      Stable reference to the evidence describing an attempted or
+      completed execution.
+
+  - canonical_id: audit_id
+    producer_stage: audit
+    semantic_type: audit_reference
+    value_type: string
+    cardinality: one
+    mutability: immutable
+    integrity: signature
+    description: >-
+      Stable reference to the audit determination produced from
+      authorization and execution evidence.
+
+  - canonical_id: allocation_id
+    producer_stage: royalty
+    semantic_type: allocation_reference
+    value_type: string
+    cardinality: one
+    mutability: append-only
+    integrity: digest-and-signature
+    description: >-
+      Stable reference to the royalty allocation or value distribution
+      ledger record.
+
+extensions:
+  registry_owner: SamuraiWriter7
+  lifecycle_scope: kazene-core
