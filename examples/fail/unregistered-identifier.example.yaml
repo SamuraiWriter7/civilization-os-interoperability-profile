@@ -1,11 +1,11 @@
-schema_version: "0.3.0"
+schema_version: "0.5.0"
 profile_kind: civilization-os-interoperability-profile
 profile_id: invalid-unregistered-identifier
 status: draft
 title: Invalid Unregistered Identifier
 description: >-
   An invalid profile in which the Origin stage produces policy_id
-  without declaring it in the canonical identifier registry.
+  without declaring that identifier in the canonical identifier registry.
 identifier_namespace: org.kazene.civilization-os
 
 identifier_registry:
@@ -15,8 +15,22 @@ identifier_registry:
 
 compatibility_registry:
   registry_id: kazene-core-compatibility
-  version: v0.3
+  version: v0.4
   registry_ref: registry/protocol-compatibility.yaml
+
+adapter_registry:
+  registry_id: kazene-core-adapters
+  version: v0.4
+  registry_ref: registry/protocol-adapters.yaml
+
+adapter_bindings: []
+
+resolution_policy:
+  require_resolution_receipt: true
+  require_digest_lock: true
+  require_exact_stage_snapshot: true
+  require_conformance_handoff: true
+  handoff_target: kazene-protocol-conformance-suite
 
 profile_sequence:
   - stage: origin
@@ -35,8 +49,8 @@ profile_sequence:
       - canonical_id: policy_id
         local_field: policy_record_id
     notes: >-
-      Produces the required origin_id and an invalid policy_id that is
-      absent from the canonical identifier registry.
+      Invalid binding. Origin produces the required origin_id together
+      with policy_id, which is absent from the canonical identifier registry.
 
   - stage: trace
     position: 2
@@ -54,7 +68,8 @@ profile_sequence:
     produces:
       - canonical_id: trace_id
         local_field: trace_record_id
-    notes: Carries the origin reference into the observable trace chain.
+    notes: >-
+      Carries the registered origin_id into the observable trace chain.
 
   - stage: authorization
     position: 3
@@ -77,7 +92,9 @@ profile_sequence:
     produces:
       - canonical_id: authorization_receipt_id
         local_field: authorization_receipt_id
-    notes: Records the authorization decision for the requested action.
+    notes: >-
+      Records why the requested action is authorized, denied, or held
+      for human review.
 
   - stage: execution
     position: 4
@@ -100,7 +117,8 @@ profile_sequence:
     produces:
       - canonical_id: execution_id
         local_field: execution_id
-    notes: Binds execution evidence to the authorization decision.
+    notes: >-
+      Binds execution evidence to the authorization receipt and trace chain.
 
   - stage: audit
     position: 5
@@ -123,7 +141,8 @@ profile_sequence:
     produces:
       - canonical_id: audit_id
         local_field: audit_record_id
-    notes: Verifies authorization and execution evidence.
+    notes: >-
+      Verifies authorization and execution evidence before allocation.
 
   - stage: royalty
     position: 6
@@ -146,7 +165,9 @@ profile_sequence:
     produces:
       - canonical_id: allocation_id
         local_field: allocation_ledger_id
-    notes: Converts audited contribution evidence into an allocation record.
+    notes: >-
+      Converts audited origin and contribution evidence into an
+      explainable royalty allocation record.
 
 conformance:
   require_ordered_execution: true
@@ -157,6 +178,12 @@ conformance:
   require_compatibility_resolution: true
   require_exact_protocol_versions: true
   reject_blocked_compatibility: true
+  require_adapter_resolution: true
+  reject_unbound_adapters: true
+  reject_lossy_adapters: true
+  require_resolution_receipt: true
+  require_digest_lock: true
+  require_conformance_handoff: true
   reject_unknown_stages: true
   allow_optional_profiles: false
 
